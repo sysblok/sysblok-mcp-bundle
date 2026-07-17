@@ -11,9 +11,10 @@ services:
       - PLANKA_BASE_URL=${PLANKA_BASE_URL}
       - PLANKA_API_KEY=${PLANKA_API_KEY}
     ports:
-      # loopback-only: PLANKA_API_KEY is baked in server-side and the SSE
-      # endpoint has no additional per-request auth -- anything reaching
-      # this port has full access as that user. Never bind 0.0.0.0.
+      # только localhost: PLANKA_API_KEY зашит на стороне сервера, а у
+      # SSE-эндпоинта нет дополнительной авторизации на уровне запроса --
+      # у всех, кто достучится до этого порта, будет полный доступ от
+      # имени этого пользователя. Никогда не биндить на 0.0.0.0.
       - "127.0.0.1:3001:3001"
 
   google-workspace-mcp:
@@ -32,11 +33,12 @@ services:
       - OAUTHLIB_INSECURE_TRANSPORT=1
       - WORKSPACE_MCP_CREDENTIALS_DIR=/root/.google_workspace_mcp/credentials
     ports:
-      # loopback-only, and required: the browser hits localhost:8000
-      # directly for the OAuth redirect, so this must be a published host
-      # port, not just an internal compose-network address.
+      # только localhost, и это обязательно: браузер стучится напрямую на
+      # localhost:8000 для OAuth-редиректа, поэтому порт должен быть
+      # опубликован на хосте, а не быть просто адресом во внутренней сети
+      # compose.
       - "127.0.0.1:8000:8000"
     volumes:
-      # bind mount, not a named volume, so SETUP.md/a human can verify
-      # auth succeeded with a plain `ls ./data/google-credentials`.
+      # bind mount, а не именованный volume, чтобы SETUP.md/человек могли
+      # проверить успешность авторизации простым `ls ./data/google-credentials`.
       - ./data/google-credentials:/root/.google_workspace_mcp/credentials

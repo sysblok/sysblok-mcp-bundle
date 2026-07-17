@@ -10,9 +10,9 @@
         "docdyhr/mcp-wordpress:latest"
       ],
       "env": {
-        "WORDPRESS_SITE_URL": "<filled in by SETUP.md from .env>",
-        "WORDPRESS_USERNAME": "<filled in by SETUP.md from .env>",
-        "WORDPRESS_APP_PASSWORD": "<filled in by SETUP.md from .env>"
+        "WORDPRESS_SITE_URL": "<будет заполнено SETUP.md из .env>",
+        "WORDPRESS_USERNAME": "<будет заполнено SETUP.md из .env>",
+        "WORDPRESS_APP_PASSWORD": "<будет заполнено SETUP.md из .env>"
       }
     },
     "planka": {

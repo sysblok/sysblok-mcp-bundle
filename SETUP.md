@@ -1,48 +1,50 @@
-# SETUP.md -- sysblok-mcp-bundle agent setup script
+# SETUP.md -- скрипт настройки sysblok-mcp-bundle для агента
 
-> You are an AI agent executing this file on behalf of a human teammate.
-> This document is written in second person imperative addressed to YOU.
-> The human only answers questions and confirms actions as you work through
-> this -- do not summarize this file back to them and ask them to do the
-> steps manually yourself.
+> Ты -- AI-агент, который выполняет этот файл от имени коллеги-человека.
+> Документ написан во втором лице, повелительном наклонении и обращён
+> именно к ТЕБЕ. Человек только отвечает на вопросы и подтверждает
+> действия по ходу дела -- не пересказывай ему этот файл и не проси
+> выполнить шаги вручную самостоятельно.
 >
-> If you have a Bash/shell tool available: you should have fetched this
-> file itself with `curl -fsSL <raw-url>` rather than a web-summarizing
-> fetch tool, since you're about to write its contents to disk verbatim and
-> a summarizing fetch may paraphrase or truncate it. If you only have a
-> web-fetch tool that summarizes pages, ask it to reproduce this document's
-> content verbatim rather than describe it.
+> Если у тебя есть Bash/shell-инструмент: сам этот файл нужно было
+> получить через `curl -fsSL <raw-url>`, а не через инструмент,
+> суммаризирующий веб-страницы -- ты сейчас будешь записывать его
+> содержимое на диск дословно, а суммаризация могла бы его перефразировать
+> или обрезать. Если у тебя есть только суммаризирующий web-fetch
+> инструмент, попроси его воспроизвести содержимое документа дословно, а
+> не описать его.
 >
-> Everything you need is inlined below as fenced code blocks. You do not
-> need `git clone`, `git`, Node.js, Python, or `uv`. Docker is the only
-> prerequisite, checked in Step 1.
+> Всё нужное уже встроено ниже в виде блоков кода. Тебе не понадобятся
+> `git clone`, `git`, Node.js, Python или `uv`. Единственное условие --
+> Docker, проверяется на шаге 1.
 
 ---
 
-## Step 1 -- Check prerequisites
+## Шаг 1 -- Проверка предварительных условий
 
-Run:
+Выполни:
 
 ```bash
 docker --version
 docker compose version
 ```
 
-If either command fails or is not found: stop here. Tell the human to
-install Docker Desktop (macOS/Windows) or Docker Engine + the Compose
-plugin (Linux), and wait for confirmation it's installed before continuing.
-Do not proceed on assumptions -- verify both commands actually succeed.
+Если хоть одна команда не сработала или не найдена: остановись здесь.
+Скажи человеку установить Docker Desktop (macOS/Windows) или Docker Engine
++ плагин Compose (Linux) и дождись подтверждения, что всё установлено,
+прежде чем продолжать. Не действуй на основе предположений -- убедись,
+что обе команды реально отрабатывают успешно.
 
 ---
 
-## Step 2 -- Pick a working directory and materialize files
+## Шаг 2 -- Выбор рабочей директории и создание файлов
 
-Ask the human for a working directory, defaulting to `~/sysblok-mcp-bundle/`
-if they have no preference. Create it, then write the three files below
-into it verbatim, using the fenced blocks in this document as their exact
-content (do not paraphrase, reformat, or "improve" them -- these blocks are
-kept byte-identical to this repo's tracked files by CI, so what's below is
-already correct and tested):
+Спроси у человека рабочую директорию, по умолчанию `~/sysblok-mcp-bundle/`,
+если предпочтений нет. Создай её, затем запиши в неё три файла ниже
+дословно, используя блоки кода из этого документа как их точное
+содержимое (не перефразируй, не переформатируй и не "улучшай" их -- эти
+блоки поддерживаются байт-в-байт идентичными отслеживаемым файлам этого
+репозитория через CI, так что всё ниже уже корректно и протестировано):
 
 `docker-compose.yml`:
 
@@ -61,9 +63,10 @@ services:
       - PLANKA_BASE_URL=${PLANKA_BASE_URL}
       - PLANKA_API_KEY=${PLANKA_API_KEY}
     ports:
-      # loopback-only: PLANKA_API_KEY is baked in server-side and the SSE
-      # endpoint has no additional per-request auth -- anything reaching
-      # this port has full access as that user. Never bind 0.0.0.0.
+      # только localhost: PLANKA_API_KEY зашит на стороне сервера, а у
+      # SSE-эндпоинта нет дополнительной авторизации на уровне запроса --
+      # у всех, кто достучится до этого порта, будет полный доступ от
+      # имени этого пользователя. Никогда не биндить на 0.0.0.0.
       - "127.0.0.1:3001:3001"
 
   google-workspace-mcp:
@@ -82,13 +85,14 @@ services:
       - OAUTHLIB_INSECURE_TRANSPORT=1
       - WORKSPACE_MCP_CREDENTIALS_DIR=/root/.google_workspace_mcp/credentials
     ports:
-      # loopback-only, and required: the browser hits localhost:8000
-      # directly for the OAuth redirect, so this must be a published host
-      # port, not just an internal compose-network address.
+      # только localhost, и это обязательно: браузер стучится напрямую на
+      # localhost:8000 для OAuth-редиректа, поэтому порт должен быть
+      # опубликован на хосте, а не быть просто адресом во внутренней сети
+      # compose.
       - "127.0.0.1:8000:8000"
     volumes:
-      # bind mount, not a named volume, so SETUP.md/a human can verify
-      # auth succeeded with a plain `ls ./data/google-credentials`.
+      # bind mount, а не именованный volume, чтобы SETUP.md/человек могли
+      # проверить успешность авторизации простым `ls ./data/google-credentials`.
       - ./data/google-credentials:/root/.google_workspace_mcp/credentials
 ```
 <!-- END-SYNC: docker-compose.yml -->
@@ -98,58 +102,61 @@ services:
 <!-- BEGIN-SYNC: .env.example -->
 ```bash
 # ==============================================================================
-# sysblok-mcp-bundle -- environment configuration
-# Copy this file to .env and fill in the blanks. .env is gitignored and must
-# never be committed -- see README.md "Secrets" section.
+# sysblok-mcp-bundle -- переменные окружения
+# Скопируйте этот файл в .env и заполните пропуски. .env добавлен в
+# .gitignore и никогда не должен коммититься -- см. раздел "Секреты" в README.md.
 # ==============================================================================
 
 # ---- Planka MCP (chmald/planka-mcp) -----------------------------------------
 
-# ONE-TIME, org-wide constant: sysblok's Planka prod instance.
+# ОДНОКРАТНО, общая для всех константа: прод-инстанс Planka в sysblok.
 PLANKA_BASE_URL=https://board.sysblok.team
 
-# PER-USER, self-generated: log into Planka -> avatar menu -> Settings ->
-# API Keys -> Generate. Paste the token below. Do not share this with
-# teammates -- generate your own.
+# СВОЙ У КАЖДОГО, генерируется самостоятельно: зайдите в Planka -> меню
+# аватарки -> Settings -> API Keys -> Generate. Вставьте токен ниже. Не
+# делитесь им с коллегами -- сгенерируйте свой собственный.
 PLANKA_API_KEY=
 
-# Optional: pin a specific planka-mcp image tag instead of `latest`.
+# Опционально: закрепить конкретный тег образа planka-mcp вместо `latest`.
 PLANKA_MCP_VERSION=latest
 
 
 # ---- WordPress MCP (docdyhr/mcp-wordpress) ----------------------------------
-# NOTE: WordPress MCP is NOT managed by docker-compose -- it's stdio-only and
-# spawned on demand by your MCP client (see client-config.example.json).
-# These values still live in .env so SETUP.md can read them once and write
-# them straight into your MCP client config in the same pass.
+# ПРИМЕЧАНИЕ: WordPress MCP НЕ управляется через docker-compose -- он работает
+# только по stdio и запускается по требованию вашим MCP-клиентом (см.
+# client-config.example.json). Эти значения всё равно хранятся в .env, чтобы
+# SETUP.md мог прочитать их один раз и сразу прописать в конфиг клиента.
 
-# ONE-TIME, org-wide constant: sysblok's WordPress site URL.
+# ОДНОКРАТНО, общая для всех константа: адрес сайта WordPress sysblok.
 WORDPRESS_SITE_URL=https://sysblok.ru
 
-# PER-USER, self-generated: wp-admin -> your Profile -> Application Passwords
-# -> "New Application Password Name" -> Add New. Requires Editor role or
-# above. Copy the generated password (with spaces) exactly as shown.
+# СВОЙ У КАЖДОГО, генерируется самостоятельно: wp-admin -> ваш профиль ->
+# Application Passwords -> "New Application Password Name" -> Add New.
+# Нужна роль Editor или выше. Скопируйте сгенерированный пароль точно как
+# показано, включая пробелы.
 WORDPRESS_USERNAME=
 WORDPRESS_APP_PASSWORD=
 
 
 # ---- Google Workspace MCP (taylorwilsdon/google_workspace_mcp) -------------
 
-# ONE-TIME, ADMIN-PROVIDED: shared org-wide OAuth Client ID/Secret, "Desktop
-# app" type, created once in Google Cloud Console with Docs+Sheets+Drive
-# scopes enabled. Distributed by the admin via a side channel -- NOT this
-# repo, NOT a public channel. Google does not treat Desktop-app client
-# secrets as confidential (PKCE + localhost-only redirect protect the actual
-# flow), but we still keep it out of git history as hygiene.
+# ОДНОКРАТНО, ПРЕДОСТАВЛЯЕТСЯ АДМИНОМ: общий на всю организацию OAuth Client
+# ID/Secret типа "Desktop app", созданный один раз в Google Cloud Console со
+# scope'ами Docs+Sheets+Drive. Раздаётся админом отдельным каналом -- НЕ
+# через этот репозиторий и НЕ в публичный канал. Google не считает Client
+# Secret Desktop-приложений конфиденциальным (реальная защита -- PKCE и
+# редирект только на localhost), но мы всё равно не держим его в истории
+# git ради гигиены.
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 
-# Which Google Workspace tool set to expose. core = Docs+Sheets+Drive only,
-# matching what this bundle is scoped for. Leave as-is unless you know you
-# need `extended` or `complete`.
+# Какой набор инструментов Google Workspace открывать. core = только
+# Docs+Sheets+Drive, под это и рассчитан бандл. Не меняйте, если не уверены,
+# что нужен `extended` или `complete`.
 GOOGLE_WORKSPACE_TOOL_TIER=core
 
-# Optional: pin a specific google_workspace_mcp image tag instead of `latest`.
+# Опционально: закрепить конкретный тег образа google_workspace_mcp вместо
+# `latest`.
 GOOGLE_WORKSPACE_MCP_VERSION=latest
 ```
 <!-- END-SYNC: .env.example -->
@@ -170,9 +177,9 @@ GOOGLE_WORKSPACE_MCP_VERSION=latest
         "docdyhr/mcp-wordpress:latest"
       ],
       "env": {
-        "WORDPRESS_SITE_URL": "<filled in by SETUP.md from .env>",
-        "WORDPRESS_USERNAME": "<filled in by SETUP.md from .env>",
-        "WORDPRESS_APP_PASSWORD": "<filled in by SETUP.md from .env>"
+        "WORDPRESS_SITE_URL": "<будет заполнено SETUP.md из .env>",
+        "WORDPRESS_USERNAME": "<будет заполнено SETUP.md из .env>",
+        "WORDPRESS_APP_PASSWORD": "<будет заполнено SETUP.md из .env>"
       }
     },
     "planka": {
@@ -190,152 +197,158 @@ GOOGLE_WORKSPACE_MCP_VERSION=latest
 
 ---
 
-## Step 3 -- Create `.env` from `.env.example`
+## Шаг 3 -- Создание `.env` из `.env.example`
 
-Copy the `.env.example` content you just wrote to `.env` in the same
-directory. `PLANKA_BASE_URL` (`https://board.sysblok.team`) and
-`WORDPRESS_SITE_URL` (`https://sysblok.ru`) are both already filled in as
-fixed org-wide constants -- nothing to ask the human for here.
+Скопируй только что записанный `.env.example` в `.env` в той же
+директории. `PLANKA_BASE_URL` (`https://board.sysblok.team`) и
+`WORDPRESS_SITE_URL` (`https://sysblok.ru`) уже заполнены как
+фиксированные константы, общие для всей организации -- спрашивать у
+человека здесь нечего.
 
 ---
 
-## Step 4 -- WordPress Application Password
+## Шаг 4 -- Application Password для WordPress
 
-Walk the human through:
-1. Log into `$WORDPRESS_SITE_URL/wp-admin/`.
-2. Go to your Profile (top-right avatar, or `/wp-admin/profile.php`).
-3. Scroll to "Application Passwords".
-4. Enter a name (e.g. "sysblok-mcp-bundle"), click "Add New Application Password".
-5. Copy the generated password exactly as shown, including the spaces.
+Проведи человека через шаги:
+1. Зайти на `$WORDPRESS_SITE_URL/wp-admin/`.
+2. Перейти в свой профиль (аватарка справа сверху, или `/wp-admin/profile.php`).
+3. Прокрутить до раздела "Application Passwords".
+4. Ввести имя (например, "sysblok-mcp-bundle"), нажать "Add New Application Password".
+5. Скопировать сгенерированный пароль точно как показано, включая пробелы.
 
-Requires the account to have Editor role or above. Write `WORDPRESS_USERNAME`
-and `WORDPRESS_APP_PASSWORD` into `.env`. Verify it actually works before
-moving on:
+Нужна роль Editor или выше. Запиши `WORDPRESS_USERNAME` и
+`WORDPRESS_APP_PASSWORD` в `.env`. Прежде чем идти дальше, проверь, что
+всё реально работает:
 
 ```bash
 curl -u "$WORDPRESS_USERNAME:$WORDPRESS_APP_PASSWORD" \
   "$WORDPRESS_SITE_URL/wp-json/wp/v2/users/me"
 ```
 
-This must return HTTP 200 with the expected user's JSON, not a 401. If it
-fails, don't guess why -- show the human the actual error and ask them to
-double check the password was copied correctly (a missing/extra space is
-the most common mistake).
+Должен вернуться HTTP 200 с JSON ожидаемого пользователя, а не 401. Если
+не сработало -- не гадай, в чём дело, покажи человеку реальную ошибку и
+попроси перепроверить, что пароль скопирован верно (лишний или
+отсутствующий пробел -- самая частая ошибка).
 
 ---
 
-## Step 5 -- Planka API key
+## Шаг 5 -- API-ключ Planka
 
-Walk the human through:
-1. Log into `https://board.sysblok.team`.
-2. Avatar menu (top-right) -> Settings -> API Keys -> Generate.
-3. Copy the generated key.
+Проведи человека через шаги:
+1. Зайти на `https://board.sysblok.team`.
+2. Меню аватарки (справа сверху) -> Settings -> API Keys -> Generate.
+3. Скопировать сгенерированный ключ.
 
-Write `PLANKA_API_KEY` into `.env`. Verify:
+Запиши `PLANKA_API_KEY` в `.env`. Проверь:
 
 ```bash
 curl -H "X-Api-Key: $PLANKA_API_KEY" "$PLANKA_BASE_URL/api/users/me"
 ```
 
-Must return HTTP 200 with the expected user's JSON.
+Должен вернуться HTTP 200 с JSON ожидаемого пользователя.
 
 ---
 
-## Step 6 -- Bring up the persistent services
+## Шаг 6 -- Запуск постоянных сервисов
 
-Ask the human for `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`
-(admin-provided, shared org-wide values -- never invent or guess these,
-ask the human or tell them to ask an admin). Write them into `.env`.
+Спроси у человека `GOOGLE_OAUTH_CLIENT_ID` и `GOOGLE_OAUTH_CLIENT_SECRET`
+(предоставляются админом, это общие для всей организации значения --
+никогда не придумывай и не угадывай их, спроси человека или скажи ему
+спросить админа). Запиши их в `.env`.
 
-From the working directory, run:
+Из рабочей директории выполни:
 
 ```bash
 docker compose up -d
 ```
 
-Confirm both services are actually reachable -- don't just trust
-`docker compose ps` status, probe the ports directly:
+Убедись, что оба сервиса реально доступны -- не доверяй только статусу
+`docker compose ps`, проверь порты напрямую:
 
 ```bash
-curl -sf -o /dev/null -w "planka-mcp: %{http_code}\n" http://127.0.0.1:3001/sse || echo "planka-mcp: not reachable"
-curl -sf -o /dev/null -w "google-workspace-mcp: %{http_code}\n" http://127.0.0.1:8000/mcp || echo "google-workspace-mcp: not reachable"
+curl -sf -o /dev/null -w "planka-mcp: %{http_code}\n" http://127.0.0.1:3001/sse || echo "planka-mcp: недоступен"
+curl -sf -o /dev/null -w "google-workspace-mcp: %{http_code}\n" http://127.0.0.1:8000/mcp || echo "google-workspace-mcp: недоступен"
 ```
 
-A non-connection-refused response (even a 4xx) means the service is up and
-listening. Do not proceed to Step 7 until both respond.
+Любой ответ, кроме отказа в соединении (даже 4xx), означает, что сервис
+поднят и слушает порт. Не переходи к шагу 7, пока не ответят оба.
 
 ---
 
-## Step 7 -- Google OAuth consent
+## Шаг 7 -- OAuth-авторизация Google
 
-Tell the human the Google Workspace MCP container is running and needs a
-one-time browser consent to link their own Google account. Check the
-container's startup logs for the exact consent-flow URL it prints:
+Скажи человеку, что контейнер Google Workspace MCP запущен и требует
+разовой авторизации через браузер, чтобы привязать его собственный
+аккаунт Google. Проверь логи запуска контейнера на предмет точного URL
+для авторизации:
 
 ```bash
-docker compose logs google-workspace-mcp | grep -i -E "auth|oauth|consent" 
+docker compose logs google-workspace-mcp | grep -i -E "auth|oauth|consent"
 ```
 
-Have the human open that URL in their own browser (not yours) and complete
-the Google consent screen. Confirm success by polling for the credentials
-file landing on the host, rather than asking "did it work?":
+Попроси человека открыть этот URL в своём браузере (не в твоём) и пройти
+экран согласия Google. Убедись в успехе, дожидаясь появления файла с
+креденшелами на хосте, а не спрашивая "получилось?":
 
 ```bash
 ls ./data/google-credentials/
 ```
 
-A file appearing there is the concrete signal that auth succeeded. If
-nothing appears after a minute, check the container logs again for errors.
+Появление файла там -- конкретный, проверяемый признак того, что
+авторизация прошла успешно. Если через минуту ничего не появилось,
+снова проверь логи контейнера на ошибки.
 
 ---
 
-## Step 8 -- Wire up the MCP client config
+## Шаг 8 -- Настройка конфига MCP-клиента
 
-Ask the human which MCP client they're using (Claude Code, Claude Desktop,
-or another). Locate their real config file for their OS:
+Спроси у человека, каким MCP-клиентом он пользуется (Claude Code, Claude
+Desktop или другим). Найди его реальный конфиг-файл для его ОС:
 
-| Client | macOS | Windows | Linux |
+| Клиент | macOS | Windows | Linux |
 |---|---|---|---|
 | Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` | `%APPDATA%\Claude\claude_desktop_config.json` | `~/.config/Claude/claude_desktop_config.json` |
-| Claude Code | project `.mcp.json` in the current directory, or use `claude mcp add` | same | same |
+| Claude Code | `.mcp.json` в текущей директории проекта, либо `claude mcp add` | так же | так же |
 
-**Before writing anything**: read the file if it already exists. Show the
-human the exact change you intend to make -- merging the three
-`mcpServers` entries from `client-config.example.json` (filling in the
-`env` block's WordPress values from `.env`) into their existing config
-*without* deleting or overwriting any other entries already there. Require
-explicit confirmation before writing -- this is a real edit to the human's
-own files.
+**Прежде чем что-либо записывать**: прочитай файл, если он уже существует.
+Покажи человеку точное изменение, которое собираешься сделать -- слияние
+трёх записей `mcpServers` из `client-config.example.json` (с
+подстановкой значений WordPress из `.env` в блок `env`) в его
+существующий конфиг, *не удаляя и не перезаписывая* остальные записи,
+которые там уже есть. Обязательно получи явное подтверждение перед
+записью -- это реальное изменение файлов самого человека.
 
-For Claude Code, prefer `claude mcp add-json` (if the CLI is available)
-over hand-editing `.mcp.json`, since it avoids manual JSON-merge mistakes.
+Для Claude Code предпочти `claude mcp add-json` (если CLI доступен)
+ручному редактированию `.mcp.json` -- это избавляет от ручных ошибок
+слияния JSON.
 
-**Older-client fallback**: if the client rejects `"type": "sse"` or
-`"type": "http"` entries (some older Claude Desktop builds only understand
-local `command`/`args` stdio servers), tell the human they'll need Node.js
-installed and the `mcp-remote` npx bridge instead -- e.g.
+**Запасной вариант для старых клиентов**: если клиент отвергает записи
+`"type": "sse"` или `"type": "http"` (некоторые старые сборки Claude
+Desktop понимают только локальные stdio-серверы через `command`/`args`),
+скажи человеку, что понадобится установленный Node.js и npx-мост
+`mcp-remote` -- например,
 `"command": "npx", "args": ["-y", "mcp-remote", "http://127.0.0.1:3001/sse"]`.
-This is a fallback for outdated clients only, not the default path.
+Это запасной путь только для устаревших клиентов, а не путь по умолчанию.
 
 ---
 
-## Step 9 -- Recap
+## Шаг 9 -- Итог
 
-Print a checklist of what's done and what's still pending:
+Выведи чек-лист того, что сделано и что ещё осталось:
 
-- [ ] Docker installed and working
-- [ ] WordPress Application Password verified
-- [ ] Planka API key verified
-- [ ] `docker compose up -d` services reachable
-- [ ] Google OAuth credentials present at `./data/google-credentials/`
-- [ ] MCP client config written (confirmed by the human)
+- [ ] Docker установлен и работает
+- [ ] Application Password для WordPress проверен
+- [ ] API-ключ Planka проверен
+- [ ] Сервисы после `docker compose up -d` доступны
+- [ ] Креденшелы Google OAuth появились в `./data/google-credentials/`
+- [ ] Конфиг MCP-клиента записан (подтверждено человеком)
 
-Remind the human of the two commands they'll want later:
+Напомни человеку про две команды, которые понадобятся позже:
 
 ```bash
-docker compose up -d    # start planka-mcp + google-workspace-mcp again
-docker compose down     # stop them
+docker compose up -d    # снова запустить planka-mcp + google-workspace-mcp
+docker compose down     # остановить их
 ```
 
-The WordPress server needs no start/stop -- it only runs for the duration
-of each MCP session, spawned directly by the client.
+WordPress-серверу запуск/остановка не нужны -- он работает только на
+протяжении каждой MCP-сессии, запускаясь напрямую клиентом.

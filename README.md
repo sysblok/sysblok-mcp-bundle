@@ -1,67 +1,71 @@
 # sysblok-mcp-bundle
 
-Local MCP (Model Context Protocol) servers for WordPress, Planka, and
-Google Docs/Sheets/Drive, so anyone on the team can point Claude Code,
-Claude Desktop, or another MCP-capable agent at sysblok's tools. Docker is
-the only prerequisite -- no Node.js, Python, or git required.
+Локальные MCP-серверы (Model Context Protocol) для WordPress, Planka и
+Google Docs/Sheets/Drive, чтобы любой человек в команде мог направить
+Claude Code, Claude Desktop или другого MCP-совместимого агента на
+инструменты sysblok. Единственное предварительное условие -- Docker, без
+Node.js, Python или git.
 
-**Don't read this as a manual setup guide.** Tell any AI agent:
+**Не читайте это как руководство по ручной настройке.** Скажите любому
+AI-агенту:
 
-> Fetch `https://raw.githubusercontent.com/sysblok/sysblok-mcp-bundle/v0.1.0/SETUP.md`
-> and follow it.
+> Скачай `https://raw.githubusercontent.com/sysblok/sysblok-mcp-bundle/v0.1.0/SETUP.md`
+> и следуй инструкциям из этого файла.
 
-and answer its questions as it walks through onboarding. See
-[`SETUP.md`](./SETUP.md) for the full agent-executed flow.
+и отвечайте на его вопросы по ходу настройки. Полный пошаговый процесс,
+который выполняет агент, описан в [`SETUP.md`](./SETUP.md).
 
-> Maintainers: the URL above pins to a release tag, not `main`, so
-> instructions can't change out from under someone between "told to run
-> this" and "actually running it." Update it here after cutting each
-> release.
+> Для мейнтейнеров: ссылка выше закреплена за релизным тегом, а не за
+> `main`, чтобы инструкции не могли поменяться между "сказали запустить"
+> и "реально запустили". Обновляйте её здесь после каждого релиза.
 
-## What's included
+## Что входит в бандл
 
-| Server | Upstream | Transport | Runs via |
+| Сервер | Апстрим | Транспорт | Как запускается |
 |---|---|---|---|
-| WordPress | [`docdyhr/mcp-wordpress`](https://github.com/docdyhr/mcp-wordpress) | stdio only | on-demand `docker run`, spawned by your MCP client |
-| Planka | [`chmald/planka-mcp`](https://github.com/chmald/planka-mcp) | SSE | `docker compose` (persistent) |
-| Google Docs/Sheets/Drive | [`taylorwilsdon/google_workspace_mcp`](https://github.com/taylorwilsdon/google_workspace_mcp) | streamable-HTTP + OAuth 2.1 | `docker compose` (persistent) |
+| WordPress | [`docdyhr/mcp-wordpress`](https://github.com/docdyhr/mcp-wordpress) | только stdio | по требованию через `docker run`, запускается вашим MCP-клиентом |
+| Planka | [`chmald/planka-mcp`](https://github.com/chmald/planka-mcp) | SSE | через `docker compose` (постоянно работающий) |
+| Google Docs/Sheets/Drive | [`taylorwilsdon/google_workspace_mcp`](https://github.com/taylorwilsdon/google_workspace_mcp) | streamable-HTTP + OAuth 2.1 | через `docker compose` (постоянно работающий) |
 
-## Prerequisites
+## Предварительные условия
 
-| Tool | Notes |
+| Инструмент | Комментарий |
 |---|---|
-| Docker | Desktop (macOS/Windows) or Engine + Compose plugin (Linux). Nothing else. |
+| Docker | Desktop (macOS/Windows) или Engine + плагин Compose (Linux). Больше ничего не нужно. |
 
-## Repo layout
+## Структура репозитория
 
-- `SETUP.md` -- the real onboarding path, meant to be executed by an agent
-  on a human's behalf.
-- `docker-compose.yml` / `.env.example` -- tracked, canonical source for
-  the Planka + Google services. `SETUP.md` inlines byte-identical copies
-  of these (enforced by CI, see `scripts/check-setup-sync.sh`) so an agent
-  never needs a second fetch to materialize them.
-- `client-config.example.json` -- the `mcpServers` block for all three
-  servers, in the shape `SETUP.md` merges into your actual MCP client
-  config.
+- `SETUP.md` -- собственно путь онбординга, рассчитанный на выполнение
+  агентом от имени человека.
+- `docker-compose.yml` / `.env.example` -- отслеживаемые, канонические
+  файлы для сервисов Planka и Google. `SETUP.md` встраивает
+  байт-в-байт идентичные копии этих файлов (проверяется через CI, см.
+  `scripts/check-setup-sync.sh`), так что агенту не нужен второй запрос,
+  чтобы их создать.
+- `client-config.example.json` -- блок `mcpServers` для всех трёх
+  серверов, в том виде, в каком `SETUP.md` встраивает его в ваш реальный
+  конфиг MCP-клиента.
 
-## Secrets
+## Секреты
 
-No `.env` file is ever committed. `.gitignore` blocks `.env` and `data/`
-(where per-user Google OAuth tokens land via bind mount). The one shared
-Google OAuth Client ID/Secret lives in each teammate's local `.env`,
-distributed by an admin out-of-band -- see `.env.example` for details on
-what's per-user vs. admin-provided.
+Файл `.env` никогда не коммитится. `.gitignore` блокирует `.env` и
+`data/` (там через bind mount оседают персональные OAuth-токены Google
+каждого пользователя). Общий на всю организацию Google OAuth Client
+ID/Secret хранится в локальном `.env` каждого участника команды и
+раздаётся админом отдельным каналом -- подробности о том, что
+заполняется каждым лично, а что предоставляется админом, см. в
+`.env.example`.
 
-## License
+## Лицензия
 
-MIT -- see [`LICENSE`](./LICENSE).
+MIT -- см. [`LICENSE`](./LICENSE).
 
-## For repo maintainers
+## Для мейнтейнеров репозитория
 
-If you edit `docker-compose.yml`, `.env.example`, or
-`client-config.example.json`, update the matching fenced block in
-`SETUP.md` in the same PR. CI (`scripts/check-setup-sync.sh`) fails the
-build if they drift -- run it locally before pushing:
+Если правите `docker-compose.yml`, `.env.example` или
+`client-config.example.json` -- обновите соответствующий блок в
+`SETUP.md` в том же PR. CI (`scripts/check-setup-sync.sh`) завалит сборку
+при расхождении -- прогоните его локально перед пушем:
 
 ```bash
 ./scripts/check-setup-sync.sh
