@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "wordpress": {
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "WORDPRESS_SITE_URL",
+        "-e", "WORDPRESS_USERNAME",
+        "-e", "WORDPRESS_APP_PASSWORD",
+        "docdyhr/mcp-wordpress:latest"
+      ],
+      "env": {
+        "WORDPRESS_SITE_URL": "<filled in by SETUP.md from .env>",
+        "WORDPRESS_USERNAME": "<filled in by SETUP.md from .env>",
+        "WORDPRESS_APP_PASSWORD": "<filled in by SETUP.md from .env>"
+      }
+    },
+    "planka": {
+      "type": "sse",
+      "url": "http://127.0.0.1:3001/sse"
+    },
+    "google-workspace": {
+      "type": "http",
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}

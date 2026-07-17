@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - "SETUP.md"
+      - "docker-compose.yml"
+      - ".env.example"
+      - "client-config.example.json"
+      - "scripts/check-setup-sync.sh"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "SETUP.md"
+      - "docker-compose.yml"
+      - ".env.example"
+      - "client-config.example.json"
+      - "scripts/check-setup-sync.sh"
+      - ".github/workflows/ci.yml"
+
+jobs:
+  check-setup-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/check-setup-sync.sh
+
+  validate-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate docker-compose.yml parses
+        run: |
+          cp .env.example .env
+          docker compose config

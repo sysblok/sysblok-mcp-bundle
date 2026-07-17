@@ -1,0 +1,13 @@
+# Secrets -- never commit
+.env
+**/.env
+
+# Per-user local state: Google OAuth credentials land here via bind mount
+data/*
+!data/.gitkeep
+
+# Editor / OS
+.DS_Store
+.idea/
+*.swp
+*.swo

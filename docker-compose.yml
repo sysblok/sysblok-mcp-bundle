@@ -1,0 +1,42 @@
+name: sysblok-mcp
+
+services:
+  planka-mcp:
+    image: chmald/planka-mcp:${PLANKA_MCP_VERSION:-latest}
+    container_name: sysblok-mcp-planka
+    restart: unless-stopped
+    environment:
+      - MCP_TRANSPORT=sse
+      - MCP_PORT=3001
+      - PLANKA_BASE_URL=${PLANKA_BASE_URL}
+      - PLANKA_API_KEY=${PLANKA_API_KEY}
+    ports:
+      # loopback-only: PLANKA_API_KEY is baked in server-side and the SSE
+      # endpoint has no additional per-request auth -- anything reaching
+      # this port has full access as that user. Never bind 0.0.0.0.
+      - "127.0.0.1:3001:3001"
+
+  google-workspace-mcp:
+    image: ghcr.io/taylorwilsdon/google_workspace_mcp:${GOOGLE_WORKSPACE_MCP_VERSION:-latest}
+    container_name: sysblok-mcp-google
+    restart: unless-stopped
+    command: ["--transport", "streamable-http", "--tool-tier", "${GOOGLE_WORKSPACE_TOOL_TIER:-core}"]
+    environment:
+      - MCP_ENABLE_OAUTH21=true
+      - WORKSPACE_MCP_TRANSPORT=streamable-http
+      - WORKSPACE_MCP_HOST=0.0.0.0
+      - WORKSPACE_MCP_PORT=8000
+      - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}
+      - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET}
+      - GOOGLE_OAUTH_REDIRECT_URI=http://localhost:8000/oauth2callback
+      - OAUTHLIB_INSECURE_TRANSPORT=1
+      - WORKSPACE_MCP_CREDENTIALS_DIR=/root/.google_workspace_mcp/credentials
+    ports:
+      # loopback-only, and required: the browser hits localhost:8000
+      # directly for the OAuth redirect, so this must be a published host
+      # port, not just an internal compose-network address.
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # bind mount, not a named volume, so SETUP.md/a human can verify
+      # auth succeeded with a plain `ls ./data/google-credentials`.
+      - ./data/google-credentials:/root/.google_workspace_mcp/credentials
