@@ -2,9 +2,12 @@
 .env
 **/.env
 
-# Per-user local state: Google OAuth credentials land here via bind mount
-data/*
-!data/.gitkeep
+# Per-user local state: Google OAuth credentials land here via bind mount.
+# Not nested under a shared parent dir -- if Docker auto-creates a bind
+# mount target before the container's first successful run, it's owned by
+# root, which then breaks every subsequent run with Permission denied.
+google-credentials/*
+!google-credentials/.gitkeep
 
 # Editor / OS
 .DS_Store

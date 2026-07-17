@@ -21,17 +21,34 @@ services:
     image: ghcr.io/taylorwilsdon/google_workspace_mcp:${GOOGLE_WORKSPACE_MCP_VERSION:-latest}
     container_name: sysblok-mcp-google
     restart: unless-stopped
-    command: ["--transport", "streamable-http", "--tool-tier", "${GOOGLE_WORKSPACE_TOOL_TIER:-core}"]
+    # Не переопределяем command: у образа ENTRYPOINT ["/bin/sh","-c"] и
+    # дефолтный CMD -- одна shell-строка вида
+    # `uv run main.py --transport streamable-http ${TOOL_TIER:+--tool-tier "$TOOL_TIER"} ...`,
+    # которая уже сама подставляет --transport и читает переменные TOOL_TIER
+    # и TOOLS. Переопределение command списком ломает это: /bin/sh -c
+    # получает наш список как command-string + позиционные параметры, а не
+    # как единственный аргумент -c (проверено: контейнер падал в краш-луп с
+    # `/bin/sh: 0: Illegal option --`).
     environment:
       - MCP_ENABLE_OAUTH21=true
       - WORKSPACE_MCP_TRANSPORT=streamable-http
       - WORKSPACE_MCP_HOST=0.0.0.0
       - WORKSPACE_MCP_PORT=8000
+      - TOOL_TIER=${GOOGLE_WORKSPACE_TOOL_TIER:-core}
+      # --tool-tier сам по себе -- горизонтальный срез уровня "core" по ВСЕМ
+      # 12 сервисам образа (gmail, calendar, chat, contacts, forms, slides,
+      # tasks, search, appscript, ...), а не фильтр по конкретным сервисам.
+      # Без TOOLS ниже OAuth consent запросит доступ к Gmail/Calendar/etc.,
+      # хотя бандл заявлен как Docs+Sheets+Drive-only.
+      - TOOLS=${GOOGLE_WORKSPACE_TOOLS:-docs sheets drive}
       - GOOGLE_OAUTH_CLIENT_ID=${GOOGLE_OAUTH_CLIENT_ID}
       - GOOGLE_OAUTH_CLIENT_SECRET=${GOOGLE_OAUTH_CLIENT_SECRET}
       - GOOGLE_OAUTH_REDIRECT_URI=http://localhost:8000/oauth2callback
       - OAUTHLIB_INSECURE_TRANSPORT=1
-      - WORKSPACE_MCP_CREDENTIALS_DIR=/root/.google_workspace_mcp/credentials
+      # Образ работает под непривилегированным uid=1000(app), HOME=/home/app --
+      # /root закрыт для этого пользователя (0700 root:root), путь /root/...
+      # для этого образа непригоден (Permission denied).
+      - WORKSPACE_MCP_CREDENTIALS_DIR=/home/app/.google_workspace_mcp/credentials
     ports:
       # только localhost, и это обязательно: браузер стучится напрямую на
       # localhost:8000 для OAuth-редиректа, поэтому порт должен быть
@@ -40,5 +57,8 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       # bind mount, а не именованный volume, чтобы SETUP.md/человек могли
-      # проверить успешность авторизации простым `ls ./data/google-credentials`.
-      - ./data/google-credentials:/root/.google_workspace_mcp/credentials
+      # проверить успешность авторизации простым `ls ./google-credentials`.
+      # Не кладём эту директорию под data/ -- если Docker успевает создать
+      # bind-mount директорию до первого успешного запуска, она достаётся
+      # root, и повторные попытки падают с Permission denied.
+      - ./google-credentials:/home/app/.google_workspace_mcp/credentials
