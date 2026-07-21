@@ -3,8 +3,10 @@
 Локальные MCP-серверы (Model Context Protocol) для WordPress, Planka и
 Google Docs/Sheets/Drive, чтобы любой человек в команде мог направить
 Claude Code, Claude Desktop или другого MCP-совместимого агента на
-инструменты sysblok. Единственное предварительное условие -- Docker, без
-Node.js, Python или git.
+инструменты sysblok. Основное предварительное условие -- Docker, без
+Python или git. Node.js нужен дополнительно только пользователям Claude
+Desktop (см. `SETUP.md`, шаг 7) -- его локальный конфиг не поддерживает
+удалённые (SSE/HTTP) серверы напрямую.
 
 **Не читайте это как руководство по ручной настройке.** Скажите любому
 AI-агенту:
@@ -31,7 +33,8 @@ AI-агенту:
 
 | Инструмент | Комментарий |
 |---|---|
-| Docker | Desktop (macOS/Windows) или Engine + плагин Compose (Linux). Больше ничего не нужно. |
+| Docker | Desktop (macOS/Windows) или Engine + плагин Compose (Linux). |
+| Node.js | Только для Claude Desktop: его конфиг понимает лишь stdio-серверы, `planka`/`google-workspace` там нужно подключать через npx-мост `mcp-remote` -- см. `SETUP.md`, шаг 7. Claude Code и другим клиентам, понимающим SSE/HTTP напрямую, не нужен. |
 
 ## Структура репозитория
 
