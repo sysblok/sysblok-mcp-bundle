@@ -62,3 +62,11 @@ services:
       # bind-mount директорию до первого успешного запуска, она достаётся
       # root, и повторные попытки падают с Permission denied.
       - ./google-credentials:/home/app/.google_workspace_mcp/credentials
+      # При MCP_ENABLE_OAUTH21=true образ фактически хранит refresh/upstream
+      # токены не в WORKSPACE_MCP_CREDENTIALS_DIR выше, а в приватном
+      # хранилище fastmcp OAuth-proxy по этому пути. Без отдельного bind
+      # mount эта директория живёт только в writable-слое контейнера и
+      # теряется при `docker compose down` (или пересоздании контейнера) --
+      # проверено вручную: ./google-credentials оставался пустым всё время,
+      # реальные токены нашлись только тут через `docker exec`.
+      - ./google-oauth-proxy:/home/app/.local/share/fastmcp
