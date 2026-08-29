@@ -1,12 +1,18 @@
 # sysblok-mcp-bundle
 
-Локальные MCP-серверы (Model Context Protocol) для WordPress, Planka и
-Google Docs/Sheets/Drive, чтобы любой человек в команде мог направить
-Claude Code, Claude Desktop или другого MCP-совместимого агента на
-инструменты sysblok. Основное предварительное условие -- Docker, без
-Python или git. Node.js нужен дополнительно только пользователям Claude
-Desktop (см. `SETUP.md`, шаг 7) -- его локальный конфиг не поддерживает
-удалённые (SSE/HTTP) серверы напрямую.
+Локальные MCP-серверы (Model Context Protocol) для WordPress, Planka,
+Google Docs/Sheets/Drive и GitHub, чтобы любой человек в команде мог
+направить Claude Code, Claude Desktop или другого MCP-совместимого
+агента на инструменты sysblok. Основное предварительное условие --
+Docker, без Python или git. Node.js нужен дополнительно только
+пользователям Claude Desktop (см. `SETUP.md`, шаг 7) -- его локальный
+конфиг не поддерживает удалённые (SSE/HTTP) серверы напрямую.
+
+GitHub здесь нужен точечно: чтобы агент сам заводил issue в репозитории
+скиллов [`sysblok/sysblok-ai`](https://github.com/sysblok/sysblok-ai) --
+на это рассчитаны скиллы вроде `report-skill-problem`. Секрета он не
+требует: авторизация проходит через OAuth в браузере, см. `SETUP.md`,
+шаг 9.
 
 **Не читайте это как руководство по ручной настройке.** Скажите любому
 AI-агенту:
@@ -28,6 +34,7 @@ AI-агенту:
 | WordPress | [`docdyhr/mcp-wordpress`](https://github.com/docdyhr/mcp-wordpress) | только stdio | по требованию через `docker run`, запускается вашим MCP-клиентом |
 | Planka | [`chmald/planka-mcp`](https://github.com/chmald/planka-mcp) | SSE | через `docker compose` (постоянно работающий) |
 | Google Docs/Sheets/Drive | [`taylorwilsdon/google_workspace_mcp`](https://github.com/taylorwilsdon/google_workspace_mcp) | streamable-HTTP + OAuth 2.1 | через `docker compose` (постоянно работающий) |
+| GitHub | [`github/github-mcp-server`](https://github.com/github/github-mcp-server) | только stdio | по требованию через `docker run`, запускается вашим MCP-клиентом |
 
 ## Предварительные условия
 
@@ -45,7 +52,7 @@ AI-агенту:
   байт-в-байт идентичные копии этих файлов (проверяется через CI, см.
   `scripts/check-setup-sync.sh`), так что агенту не нужен второй запрос,
   чтобы их создать.
-- `client-config.example.json` -- блок `mcpServers` для всех трёх
+- `client-config.example.json` -- блок `mcpServers` для всех четырёх
   серверов, в том виде, в каком `SETUP.md` встраивает его в ваш реальный
   конфиг MCP-клиента.
 
@@ -58,6 +65,12 @@ ID/Secret хранится в локальном `.env` каждого учас�
 раздаётся админом отдельным каналом -- подробности о том, что
 заполняется каждым лично, а что предоставляется админом, см. в
 `.env.example`.
+
+GitHub -- единственный сервер в бандле, который не добавляет в `.env`
+ни одного секрета: в официальный образ зашито зарегистрированное
+OAuth-приложение, и авторизация проходит в браузере. Токен при этом
+живёт только в памяти контейнера, поэтому после перезапуска
+MCP-клиента авторизацию нужно пройти заново.
 
 ## Лицензия
 
