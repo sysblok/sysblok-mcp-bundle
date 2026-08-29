@@ -17,7 +17,7 @@ GitHub здесь нужен точечно: чтобы агент сам зав
 **Не читайте это как руководство по ручной настройке.** Скажите любому
 AI-агенту:
 
-> Скачай `https://raw.githubusercontent.com/sysblok/sysblok-mcp-bundle/v0.3.1/SETUP.md`
+> Скачай `https://raw.githubusercontent.com/sysblok/sysblok-mcp-bundle/v0.3.2/SETUP.md`
 > и следуй инструкциям из этого файла.
 
 и отвечайте на его вопросы по ходу настройки. Полный пошаговый процесс,
