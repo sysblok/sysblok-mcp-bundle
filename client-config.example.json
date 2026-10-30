@@ -16,8 +16,21 @@
       }
     },
     "planka": {
-      "type": "sse",
-      "url": "http://127.0.0.1:3001/sse"
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "PLANKA_BASE_URL",
+        "-e", "PLANKA_API_KEY",
+        "-e", "PLANKA_DEFAULT_BOARD_ID",
+        "-e", "PLANKA_READ_ONLY",
+        "ghcr.io/sysblok/planka-mcp:v0.3.0-sysblok.1"
+      ],
+      "env": {
+        "PLANKA_BASE_URL": "<будет заполнено SETUP.md из .env>",
+        "PLANKA_API_KEY": "<будет заполнено SETUP.md из .env>",
+        "PLANKA_DEFAULT_BOARD_ID": "<будет заполнено SETUP.md из .env>",
+        "PLANKA_READ_ONLY": "<будет заполнено SETUP.md из .env>"
+      }
     },
     "google-workspace": {
       "type": "http",

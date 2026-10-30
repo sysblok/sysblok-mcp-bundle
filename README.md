@@ -6,7 +6,7 @@ Google Docs/Sheets/Drive и GitHub, чтобы любой человек в ко
 агента на инструменты sysblok. Основное предварительное условие --
 Docker, без Python или git. Node.js нужен дополнительно только
 пользователям Claude Desktop (см. `SETUP.md`, шаг 7) -- его локальный
-конфиг не поддерживает удалённые (SSE/HTTP) серверы напрямую.
+конфиг не поддерживает удалённые (HTTP) серверы напрямую.
 
 GitHub здесь нужен точечно: чтобы агент сам заводил issue в репозитории
 скиллов [`sysblok/sysblok-ai`](https://github.com/sysblok/sysblok-ai) --
@@ -32,23 +32,35 @@ AI-агенту:
 | Сервер | Апстрим | Транспорт | Как запускается |
 |---|---|---|---|
 | WordPress | [`docdyhr/mcp-wordpress`](https://github.com/docdyhr/mcp-wordpress) | только stdio | по требованию через `docker run`, запускается вашим MCP-клиентом |
-| Planka | [`chmald/planka-mcp`](https://github.com/chmald/planka-mcp) | SSE | через `docker compose` (постоянно работающий) |
+| Planka | [`sysblok/planka-mcp`](https://github.com/sysblok/planka-mcp) (форк [`omnicoreos/planka-mcp`](https://github.com/omnicoreos/planka-mcp)), образ `ghcr.io/sysblok/planka-mcp` | только stdio | по требованию через `docker run`, запускается вашим MCP-клиентом |
 | Google Docs/Sheets/Drive | [`taylorwilsdon/google_workspace_mcp`](https://github.com/taylorwilsdon/google_workspace_mcp) | streamable-HTTP + OAuth 2.1 | через `docker compose` (постоянно работающий) |
 | GitHub | [`github/github-mcp-server`](https://github.com/github/github-mcp-server) | только stdio | по требованию через `docker run`, запускается вашим MCP-клиентом |
+
+Planka работает через наш форк, а не через апстрим: старый
+`chmald/planka-mcp` отдавал доску «СБъ. Редакция» (больше 1300 карточек)
+целиком и падал, а список карточек молча обрезал на 50. Агент видит
+только читающие инструменты (`PLANKA_READ_ONLY=true`): ни один скилл в
+`sysblok/sysblok-ai` в Planka не пишет.
+
+**Уже настроили бандл раньше, с `chmald/planka-mcp`?** Попросите агента
+выполнить раздел "Обновление: переход с `chmald/planka-mcp` на
+`sysblok/planka-mcp`" в конце `SETUP.md`. Коротко: `docker compose up -d
+--remove-orphans`, заменить запись `planka` в конфиге клиента,
+перезапустить клиента.
 
 ## Предварительные условия
 
 | Инструмент | Комментарий |
 |---|---|
 | Docker | Desktop (macOS/Windows) или Engine + плагин Compose (Linux). |
-| Node.js | Только для Claude Desktop: его конфиг понимает лишь stdio-серверы, `planka`/`google-workspace` там нужно подключать через npx-мост `mcp-remote` -- см. `SETUP.md`, шаг 7. Claude Code и другим клиентам, понимающим SSE/HTTP напрямую, не нужен. |
+| Node.js | Только для Claude Desktop: его конфиг понимает лишь stdio-серверы, `google-workspace` там нужно подключать через npx-мост `mcp-remote` -- см. `SETUP.md`, шаг 7. Остальные три сервера и так stdio, им мост не нужен. Claude Code и другим клиентам, понимающим HTTP напрямую, не нужен. |
 
 ## Структура репозитория
 
 - `SETUP.md` -- собственно путь онбординга, рассчитанный на выполнение
   агентом от имени человека.
 - `docker-compose.yml` / `.env.example` -- отслеживаемые, канонические
-  файлы для сервисов Planka и Google. `SETUP.md` встраивает
+  файлы: compose-сервис Google и переменные окружения всех серверов. `SETUP.md` встраивает
   байт-в-байт идентичные копии этих файлов (проверяется через CI, см.
   `scripts/check-setup-sync.sh`), так что агенту не нужен второй запрос,
   чтобы их создать.

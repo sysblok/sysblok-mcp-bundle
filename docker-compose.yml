@@ -1,22 +1,6 @@
 name: sysblok-mcp
 
 services:
-  planka-mcp:
-    image: chmald/planka-mcp:${PLANKA_MCP_VERSION:-latest}
-    container_name: sysblok-mcp-planka
-    restart: unless-stopped
-    environment:
-      - MCP_TRANSPORT=sse
-      - MCP_PORT=3001
-      - PLANKA_BASE_URL=${PLANKA_BASE_URL}
-      - PLANKA_API_KEY=${PLANKA_API_KEY}
-    ports:
-      # только localhost: PLANKA_API_KEY зашит на стороне сервера, а у
-      # SSE-эндпоинта нет дополнительной авторизации на уровне запроса --
-      # у всех, кто достучится до этого порта, будет полный доступ от
-      # имени этого пользователя. Никогда не биндить на 0.0.0.0.
-      - "127.0.0.1:3001:3001"
-
   google-workspace-mcp:
     image: ghcr.io/taylorwilsdon/google_workspace_mcp:${GOOGLE_WORKSPACE_MCP_VERSION:-latest}
     container_name: sysblok-mcp-google

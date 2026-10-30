@@ -61,22 +61,6 @@ Desktop полностью запустится (иконка в трее пер
 name: sysblok-mcp
 
 services:
-  planka-mcp:
-    image: chmald/planka-mcp:${PLANKA_MCP_VERSION:-latest}
-    container_name: sysblok-mcp-planka
-    restart: unless-stopped
-    environment:
-      - MCP_TRANSPORT=sse
-      - MCP_PORT=3001
-      - PLANKA_BASE_URL=${PLANKA_BASE_URL}
-      - PLANKA_API_KEY=${PLANKA_API_KEY}
-    ports:
-      # только localhost: PLANKA_API_KEY зашит на стороне сервера, а у
-      # SSE-эндпоинта нет дополнительной авторизации на уровне запроса --
-      # у всех, кто достучится до этого порта, будет полный доступ от
-      # имени этого пользователя. Никогда не биндить на 0.0.0.0.
-      - "127.0.0.1:3001:3001"
-
   google-workspace-mcp:
     image: ghcr.io/taylorwilsdon/google_workspace_mcp:${GOOGLE_WORKSPACE_MCP_VERSION:-latest}
     container_name: sysblok-mcp-google
@@ -135,7 +119,14 @@ services:
 # .gitignore и никогда не должен коммититься -- см. раздел "Секреты" в README.md.
 # ==============================================================================
 
-# ---- Planka MCP (chmald/planka-mcp) -----------------------------------------
+# ---- Planka MCP (sysblok/planka-mcp) ----------------------------------------
+# ПРИМЕЧАНИЕ: Planka MCP, как и WordPress MCP, НЕ управляется через
+# docker-compose -- он работает только по stdio и запускается по требованию
+# вашим MCP-клиентом (см. client-config.example.json). Эти значения всё
+# равно хранятся в .env, чтобы SETUP.md мог прочитать их один раз и сразу
+# прописать в конфиг клиента. Это форк omnicoreos/planka-mcp с правками под
+# нашу доску (перенесённые из других трекеров данные, имена кастомных
+# полей): https://github.com/sysblok/planka-mcp
 
 # ОДНОКРАТНО, общая для всех константа: прод-инстанс Planka в sysblok.
 PLANKA_BASE_URL=https://board.sysblok.team
@@ -149,8 +140,28 @@ PLANKA_BASE_URL=https://board.sysblok.team
 # восстановить, только перевыпустить новый.
 PLANKA_API_KEY=
 
-# Опционально: закрепить конкретный тег образа planka-mcp вместо `latest`.
-PLANKA_MCP_VERSION=latest
+# ОДНОКРАТНО, общая для всех константа: id доски «СБъ. Редакция». С ним
+# boardId становится необязательным во всех инструментах, и агенту не
+# нужно каждый раз искать доску через planka_get_structure. Другие доски
+# остаются доступны -- это значение по умолчанию, а не ограничение.
+PLANKA_DEFAULT_BOARD_ID=1773630445443876227
+
+# ОДНОКРАТНО, общая для всех константа: ни один скилл в sysblok/sysblok-ai
+# не пишет в Planka, поэтому 27 пишущих инструментов (создание, перенос,
+# удаление карточек, комментарии, ...) скрыты от агента. Ключ при этом
+# остаётся с правами вашего аккаунта -- это ограничение на стороне сервера,
+# а не в самой Planka. Выключайте (false), только если появится скилл,
+# которому нужна запись.
+PLANKA_READ_ONLY=true
+
+# Тег образа ghcr.io/sysblok/planka-mcp, который SETUP.md прописывает в
+# запись "planka" конфига клиента. Закреплён на конкретном релизе, НЕ
+# `latest`: при обновлении поменяйте его здесь и в client-config.example.json.
+# Остальные необязательные переменные сервера (PLANKA_ALLOWED_BOARD_IDS,
+# PLANKA_DISABLED_TOOLS, PLANKA_PROTECTED_LIST_IDS, ...) описаны в README
+# форка, раздел "Scoping the server"; каждую нужно добавить и в `env`, и
+# отдельным `-e ИМЯ` в `args` записи "planka".
+PLANKA_MCP_VERSION=v0.3.0-sysblok.1
 
 
 # ---- WordPress MCP (docdyhr/mcp-wordpress) ----------------------------------
@@ -262,8 +273,21 @@ GITHUB_ISSUES_REPO=sysblok/sysblok-ai
       }
     },
     "planka": {
-      "type": "sse",
-      "url": "http://127.0.0.1:3001/sse"
+      "command": "docker",
+      "args": [
+        "run", "-i", "--rm",
+        "-e", "PLANKA_BASE_URL",
+        "-e", "PLANKA_API_KEY",
+        "-e", "PLANKA_DEFAULT_BOARD_ID",
+        "-e", "PLANKA_READ_ONLY",
+        "ghcr.io/sysblok/planka-mcp:v0.3.0-sysblok.1"
+      ],
+      "env": {
+        "PLANKA_BASE_URL": "<будет заполнено SETUP.md из .env>",
+        "PLANKA_API_KEY": "<будет заполнено SETUP.md из .env>",
+        "PLANKA_DEFAULT_BOARD_ID": "<будет заполнено SETUP.md из .env>",
+        "PLANKA_READ_ONLY": "<будет заполнено SETUP.md из .env>"
+      }
     },
     "google-workspace": {
       "type": "http",
@@ -291,22 +315,28 @@ GITHUB_ISSUES_REPO=sysblok/sysblok-ai
 <!-- END-SYNC: client-config.example.json -->
 
 Обрати внимание: `google-workspace` указывает на `localhost`, а не
-`127.0.0.1`, хотя `planka` использует `127.0.0.1` -- это не опечатка. У
-Google-сервиса `GOOGLE_OAUTH_REDIRECT_URI` зафиксирован на `localhost`, и
-для OAuth 2.1 resource-indicator matching URL клиента должен совпадать по
-origin с этим redirect URI буквально (`localhost` и `127.0.0.1` считаются
-разными origin, хотя технически один и тот же loopback-адрес). У `planka`
-это не имеет значения -- это SSE-сервер без resource-matching.
+`127.0.0.1` -- это не опечатка. У Google-сервиса
+`GOOGLE_OAUTH_REDIRECT_URI` зафиксирован на `localhost`, и для OAuth 2.1
+resource-indicator matching URL клиента должен совпадать по origin с этим
+redirect URI буквально (`localhost` и `127.0.0.1` считаются разными
+origin, хотя технически один и тот же loopback-адрес).
+
+У `planka`, `wordpress` и `github` URL нет вообще: это stdio-серверы,
+клиент сам запускает их через `docker run -i --rm` на время сессии и
+говорит с ними через stdin/stdout. `planka` и `wordpress` портов не
+занимают; `github` публикует только порт 8085 для OAuth-редиректа (см.
+шаг 9).
 
 ---
 
 ## Шаг 3 -- Создание `.env` из `.env.example`
 
 Скопируй только что записанный `.env.example` в `.env` в той же
-директории. `PLANKA_BASE_URL` (`https://board.sysblok.team`) и
-`WORDPRESS_SITE_URL` (`https://sysblok.ru`) уже заполнены как
-фиксированные константы, общие для всей организации -- спрашивать у
-человека здесь нечего.
+директории. `PLANKA_BASE_URL` (`https://board.sysblok.team`),
+`PLANKA_DEFAULT_BOARD_ID` (доска «СБъ. Редакция»), `PLANKA_READ_ONLY`,
+`PLANKA_MCP_VERSION` и `WORDPRESS_SITE_URL` (`https://sysblok.ru`) уже
+заполнены как фиксированные константы, общие для всей организации --
+спрашивать у человека здесь нечего.
 
 ---
 
@@ -365,9 +395,22 @@ curl -H "X-Api-Key: $PLANKA_API_KEY" "$PLANKA_BASE_URL/api/users/me"
 
 Должен вернуться HTTP 200 с JSON ожидаемого пользователя.
 
+Planka MCP запускается не через `docker compose`, а самим клиентом по
+требованию (как WordPress и GitHub), поэтому скачай образ заранее --
+тег возьми из `PLANKA_MCP_VERSION` в `.env`:
+
+```bash
+docker pull "ghcr.io/sysblok/planka-mcp:$PLANKA_MCP_VERSION"
+```
+
+Иначе образ начнёт тянуться при первом же обращении клиента к серверу,
+и вызов инструмента может отвалиться по таймауту. Если pull падает с
+`denied: denied` -- см. ниже в шаге 6 про протухший `docker login
+ghcr.io`, причина та же.
+
 ---
 
-## Шаг 6 -- Запуск постоянных сервисов
+## Шаг 6 -- Запуск постоянного сервиса Google
 
 Спроси у человека `GOOGLE_OAUTH_CLIENT_ID` и `GOOGLE_OAUTH_CLIENT_SECRET`
 (предоставляются админом, это общие для всей организации значения --
@@ -387,16 +430,15 @@ docker compose up -d
 этом случае не откатывается на анонимный pull -- просто падает.
 Почини: `docker logout ghcr.io`, затем повтори `docker compose up -d`.
 
-Убедись, что оба сервиса реально доступны -- не доверяй только статусу
-`docker compose ps`, проверь порты напрямую:
+Убедись, что сервис реально доступен -- не доверяй только статусу
+`docker compose ps`, проверь порт напрямую:
 
 ```bash
-curl -sf -o /dev/null -w "planka-mcp: %{http_code}\n" http://127.0.0.1:3001/sse || echo "planka-mcp: недоступен"
 curl -sf -o /dev/null -w "google-workspace-mcp: %{http_code}\n" http://127.0.0.1:8000/mcp || echo "google-workspace-mcp: недоступен"
 ```
 
 Любой ответ, кроме отказа в соединении (даже 4xx), означает, что сервис
-поднят и слушает порт. Не переходи к шагу 8, пока не ответят оба --
+поднят и слушает порт. Не переходи к шагу 8, пока он не ответит --
 шагу 7 (конфиг клиента) это не требуется, но шагу 8 (OAuth) требуется.
 
 Если `google-workspace-mcp` падает с `Permission denied` на путь
@@ -427,8 +469,9 @@ Desktop или другим). Найди его реальный конфиг-ф
 **Прежде чем что-либо записывать**: прочитай файл, если он уже существует.
 Покажи человеку точное изменение, которое собираешься сделать -- слияние
 четырёх записей `mcpServers` из `client-config.example.json` (с
-подстановкой значений WordPress из `.env` в блок `env`) в его
-существующий конфиг, *не удаляя и не перезаписывая* остальные записи,
+подстановкой значений WordPress и Planka из `.env` в блоки `env`; тег
+образа в `args` записи `planka` должен совпадать с `PLANKA_MCP_VERSION`)
+в его существующий конфиг, *не удаляя и не перезаписывая* остальные записи,
 которые там уже есть. Обязательно получи явное подтверждение перед
 записью -- это реальное изменение файлов самого человека.
 
@@ -440,14 +483,15 @@ Desktop или другим). Найди его реальный конфиг-ф
 увидит добавленный сервер без явной ошибки. Убедись, что команда
 выполняется из той же директории, откуда человек обычно запускает
 клиента. Также стоит свериться с `claude mcp list` на предмет других
-локальных MCP-серверов, уже занимающих порты 3001/8000/8085 -- конфликт
+локальных MCP-серверов, уже занимающих порты 8000/8085 -- конфликт
 порта тоже проявляется не как явная ошибка, а как молчаливая
 недоступность. С 8085 (его публикует контейнер `github`) отличие в
 другом: этот порт занят всё время, пока живёт MCP-сессия, и при
 конфликте контейнер вообще не стартует -- подробности на шаге 9.
+Контейнеры `planka` и `wordpress` портов не занимают вообще.
 
 **Если клиент -- Claude Desktop, `client-config.example.json` в
-исходном виде не сработает для `planka` и `google-workspace`.**
+исходном виде не сработает для `google-workspace`.**
 Локальный `claude_desktop_config.json` в Claude Desktop поддерживает
 только stdio-серверы (`command`/`args`) -- записи с `"type": "sse"` или
 `"type": "http"` он молча отбрасывает при загрузке, и в списке серверов
@@ -456,34 +500,29 @@ Desktop или другим). Найди его реальный конфиг-ф
 через файл конфига нельзя вообще -- удалённые серверы там добавляются
 только через UI (Settings -> Connectors -> "Add custom connector"), а
 это соединение устанавливает облако Anthropic, а не компьютер человека,
-поэтому там требуется публично доступный HTTPS-адрес. `planka-mcp` и
-`google-workspace-mcp` нарочно опубликованы только на `127.0.0.1` (см.
-комментарий в `docker-compose.yml` про `planka-mcp` -- у его SSE
-эндпоинта нет проверки авторизации на уровне запроса, и выставлять его
-в публичный интернет через ngrok/Cloudflare Tunnel нельзя), так что
-путь через "Add custom connector" для них не подходит принципиально, а
-не из-за версии клиента.
+поэтому там требуется публично доступный HTTPS-адрес.
+`google-workspace-mcp` нарочно опубликован только на `127.0.0.1` (см.
+комментарий про порт в `docker-compose.yml`), и выставлять его в
+публичный интернет через ngrok/Cloudflare Tunnel нельзя, так что путь
+через "Add custom connector" для него не подходит принципиально, а не
+из-за версии клиента.
 
-Рабочий путь для `planka` и `google-workspace` в Claude Desktop -- тот
+Рабочий путь для `google-workspace` в Claude Desktop -- тот
 же локальный мост `mcp-remote`, что и для по-настоящему старых клиентов:
 он работает на компьютере человека, а не в облаке, и представляется
 Claude Desktop обычным stdio-сервером, который файл конфига понимает.
-Понадобится установленный Node.js (для `npx`). Замени в конфиге записи
-`planka` и `google-workspace` на:
+Понадобится установленный Node.js (для `npx`). Замени в конфиге запись
+`google-workspace` на:
 
 ```json
-"planka": {
-  "command": "npx",
-  "args": ["-y", "mcp-remote", "http://127.0.0.1:3001/sse"]
-},
 "google-workspace": {
   "command": "npx",
   "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
 }
 ```
 
-`wordpress` и `github` в конфиге не трогай -- они и так stdio,
-`mcp-remote` им не нужен.
+`wordpress`, `planka` и `github` в конфиге не трогай -- они и так
+stdio, `mcp-remote` им не нужен.
 
 У Claude Desktop нет слэш-команды `/mcp` (это специфика Claude Code) --
 статус серверов и переподключение для Claude Desktop смотри в Settings
@@ -620,8 +659,8 @@ Code и Claude Desktop), у которого уже поднят свой кон
 
 - [ ] Docker установлен и работает
 - [ ] Application Password для WordPress проверен
-- [ ] API-ключ Planka проверен
-- [ ] Сервисы после `docker compose up -d` доступны
+- [ ] API-ключ Planka проверен, образ `ghcr.io/sysblok/planka-mcp` скачан
+- [ ] `google-workspace-mcp` после `docker compose up -d` доступен
 - [ ] Конфиг MCP-клиента записан (подтверждено человеком)
 - [ ] Google OAuth пройден через клиент, креденшелы появились в `./google-credentials/`
 - [ ] GitHub: авторизация пройдена, issue в `sysblok/sysblok-ai` видны
@@ -629,9 +668,61 @@ Code и Claude Desktop), у которого уже поднят свой кон
 Напомни человеку про две команды, которые понадобятся позже:
 
 ```bash
-docker compose up -d    # снова запустить planka-mcp + google-workspace-mcp
-docker compose down     # остановить их
+docker compose up -d    # снова запустить google-workspace-mcp
+docker compose down     # остановить его
 ```
 
-Серверам WordPress и GitHub запуск/остановка не нужны -- они работают
+Серверам WordPress, Planka и GitHub запуск/остановка не нужны -- они работают
 только на протяжении каждой MCP-сессии, запускаясь напрямую клиентом.
+
+---
+
+## Обновление: переход с `chmald/planka-mcp` на `sysblok/planka-mcp`
+
+Этот раздел -- не часть первичной настройки. Выполняй его, только если у
+человека бандл уже настроен по старой версии этого файла (в его
+`docker-compose.yml` есть сервис `planka-mcp`, а в конфиге клиента запись
+`planka` с `"type": "sse"` и `http://127.0.0.1:3001/sse` или с
+`mcp-remote` на этот адрес).
+
+Зачем: старый сервер отдавал доску «СБъ. Редакция» целиком (больше 4 млн
+символов) и падал, а список карточек молча обрезал на 50. Форк отвечает
+компактно, листает большие колонки и показывает кастомные поля карточки
+по именам («Автор», «Google Doc», ...).
+
+1. Перезапиши в рабочей директории `docker-compose.yml` и `.env.example`
+   блоками из шага 2. Из старого `.env` сохрани `PLANKA_API_KEY` --
+   ключ тот же, перевыпускать его не нужно. Добавь в `.env` новые
+   переменные `PLANKA_DEFAULT_BOARD_ID`, `PLANKA_READ_ONLY` и новое
+   значение `PLANKA_MCP_VERSION` из `.env.example`.
+2. Останови старый контейнер. Сервиса `planka-mcp` в compose больше нет,
+   поэтому обычный `docker compose up -d` его не уберёт:
+
+   ```bash
+   docker compose up -d --remove-orphans
+   ```
+
+   (или точечно `docker rm -f sysblok-mcp-planka`). Порт 3001 после
+   этого должен освободиться.
+3. Скачай новый образ, как в шаге 5:
+   `docker pull "ghcr.io/sysblok/planka-mcp:$PLANKA_MCP_VERSION"`.
+4. Замени в конфиге клиента запись `planka` целиком на запись из
+   `client-config.example.json` (шаг 2) с подстановкой значений из
+   `.env` -- с теми же правилами, что в шаге 7: показать изменение и
+   получить подтверждение, остальные записи не трогать. В Claude Desktop
+   мост `mcp-remote` для `planka` больше не нужен: запись теперь stdio.
+   Для Claude Code: `claude mcp remove planka`, затем `claude mcp
+   add-json planka '<запись>'` из той же директории, что и раньше.
+5. Полностью перезапусти клиента -- MCP-серверы загружаются при старте
+   сессии.
+
+Названия инструментов поменялись: вместо `boards`, `lists`, `cards` и
+т. п. теперь `planka_get_structure`, `planka_board_summary`,
+`planka_find_cards`, `planka_get_card` и другие с префиксом `planka_`.
+Если у человека в `.claude/settings.json` (или аналоге) есть правила
+разрешений вида `mcp__planka__cards`, замени их на новые имена.
+
+Проверь по реальным данным: попроси агента вызвать
+`planka_board_summary` и покажи человеку колонки доски «СБъ. Редакция»
+с числом карточек. Пишущих инструментов агент видеть не должен
+(`PLANKA_READ_ONLY=true`).
